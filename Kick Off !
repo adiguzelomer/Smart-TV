@@ -1,0 +1,55 @@
+#Datayı oku
+tv <- read.csv2("D:/Users/26000215/Desktop/test.csv", header = TRUE, sep = "|", dec = ".", skipNul = FALSE, na.strings = TRUE)
+#Datayı düzenleme, saate çevirdik
+library(dplyr)
+hour <- function(x) { x/3600 }
+is.na(tv)
+
+b<- round(tv[1:22]/3600, digits = 3)
+#a <- round((sapply(tv[c(1:22)], hour)), digits = 3)
+#birleştirme
+b <- bind_cols(tv[23:30], b[1:22])
+
+
+b$'#_Of_Days'<- difftime('2016-06-26', b$since, units = 'days')
+
+b$'Daily_Average'<- round(as.numeric(b$Total)/as.numeric(b$`#_Of_Days`), digit=3)
+
+b$'Watch_Duration_Band' <- ifelse(b$Daily_Average<0.5, "Less than 30 mins",
+                           ifelse(b$Daily_Average>=0.5 & b$Daily_Average<1, "Between 30mins - 1hour", 
+                           ifelse(b$Daily_Average>=1 & b$Daily_Average<5, "Between 1 hours- 5 hours",
+                           ifelse(b$Daily_Average>=5 & b$Daily_Average<10, "Between 5 hours - 10hours",
+                           ifelse(b$Daily_Average>10, "Greater than 10 hours", "NA")))))
+  
+b <- filter(b, b$Daily_Average>0 & b$Daily_Average<24 )
+
+c <- sqldf::sqldf('select Watch_Duration_Band, count(Watch_Duration_Band) as Number 
+from b group by Watch_Duration_Band order by Number Desc')
+
+c$'%' <- scales::percent(round(c$Number/sum(c$Number), digits = 2))
+
+library(plotrix)
+slices <- c$Number
+lbls <- paste(c$Watch_Duration_Band, "\n", c$Number, "\n", c$`%`, sep = "")
+
+
+pie3D(slices, labels=lbls, explode=0.1, main="Watch Duration Band", 
+      radius = 1, edges = 80, height = 0.1, theta = pi/3, start = 90,
+      border = par("fg"), col = c("brown","#ddaa00","pink","#dd00dd"), labelpos = NULL, labelcex = 1, shade =1)
+
+pie3D.labels(radialpos = pi/6,radius=1,height=0.1,theta=pi/6,
+             labels = lbls,labelcol=par("fg"),labelcex=1.5,labelrad=1.25,minsep=0.8)
+#Alternatif 2
+#pieval<- c$Number
+#pielabels<- paste(c$Watch_Duration_Band, "\n", c$Number, "\n", c$`%`, sep = "")
+# grab the radial positions of the labels
+#lp <- pie3D(pieval,radius=0.9,labels=pielabels,explode=0.1,main="Smart TV - Watch Duration Band")
+# lengthen the last label and move it to the left
+#pielabels[5]<-"Greater Than 10 Hours"
+#lp[3] <- 5.5
+#lp[4] <- 6.1
+#lp[5] <- 6.6
+# specify some new colors
+#pie3D(pieval,radius=0.9,labels=pielabels,explode=0.1,main="Smart TV - Watch Duration Band",
+      #col=c("brown","#ddaa00","pink","red3","blue"),labelpos=NULL, labelcex = 1, 
+     #edges = 80, height = 0.1, theta = pi/3, start = 90)
